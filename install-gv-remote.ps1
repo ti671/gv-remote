@@ -94,6 +94,14 @@ function Install-Msi {
     }
 }
 
+function Register-GvRemoteProtocol {
+    Write-Host "Registrando protocolo gvremote:// ..."
+    $commandValue = '\"C:\Program Files\Gv Remote\Gv Remote.exe\" \"%1\"'
+    & reg add "HKCR\gvremote" /ve /d "URL:Gv Remote Protocol" /f | Out-Null
+    & reg add "HKCR\gvremote" /v "URL Protocol" /d "" /f | Out-Null
+    & reg add "HKCR\gvremote\shell\open\command" /ve /d $commandValue /f | Out-Null
+}
+
 function Install-GvRemoteInventoryScript {
     $scriptDir = Join-Path $env:ProgramFiles "GLPI-Agent\scripts"
     New-Item -ItemType Directory -Path $scriptDir -Force | Out-Null
@@ -192,6 +200,7 @@ $gvRemoteMsi = Save-ReleaseAsset -Asset $gvRemoteAsset -DestinationDirectory $te
 Write-Host "Instalando Gv Remote..."
 Install-Msi -Path $gvRemoteMsi -Arguments $GvRemoteInstallArgs
 Write-Host "Gv Remote instalado com sucesso."
+Register-GvRemoteProtocol
 
 $glpiAgentAsset = Get-LatestReleaseAsset -Repo $GlpiAgentRepo -Pattern $GlpiAgentAssetPattern
 $glpiAgentMsi = Save-ReleaseAsset -Asset $glpiAgentAsset -DestinationDirectory $tempDir
