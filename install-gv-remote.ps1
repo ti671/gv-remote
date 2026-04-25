@@ -103,10 +103,15 @@ function Install-Msi {
 
 function Register-GvRemoteProtocol {
     Write-Step "Registrando protocolo gvremote://"
-    $commandValue = '\"C:\Program Files\Gv Remote\Gv Remote.exe\" \"%1\"'
-    & reg add "HKCR\gvremote" /ve /d "URL:Gv Remote Protocol" /f | Out-Null
-    & reg add "HKCR\gvremote" /v "URL Protocol" /d "" /f | Out-Null
-    & reg add "HKCR\gvremote\shell\open\command" /ve /d $commandValue /f | Out-Null
+    $commandValue = '"C:\Program Files\Gv Remote\Gv Remote.exe" "%1"'
+    $regBase = "HKCU:\Software\Classes\gvremote"
+
+    New-Item -Path $regBase -Force | Out-Null
+    Set-ItemProperty -Path $regBase -Name "(default)" -Value "URL:Gv Remote Protocol"
+    New-ItemProperty -Path $regBase -Name "URL Protocol" -Value "" -PropertyType String -Force | Out-Null
+    New-Item -Path "$regBase\shell\open\command" -Force | Out-Null
+    Set-ItemProperty -Path "$regBase\shell\open\command" -Name "(default)" -Value $commandValue
+
     Write-Host "Protocolo gvremote:// registrado."
 }
 
