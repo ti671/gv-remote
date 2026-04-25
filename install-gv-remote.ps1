@@ -9,7 +9,7 @@
 [CmdletBinding()]
 param(
     [string] $Repo = "ti671/gv-remote",
-    [string] $AssetNamePattern = "Gv Remote*.msi",
+    [string] $AssetNamePattern = "Gv*Remote*.msi",
     [string] $InstallArgs = "/qn /norestart"
 )
 
