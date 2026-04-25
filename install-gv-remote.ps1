@@ -18,6 +18,13 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$script:StepCounter = 0
+
+function Write-Step {
+    param([string] $Message)
+    $script:StepCounter++
+    Write-Host ("[{0}] {1}" -f $script:StepCounter, $Message)
+}
 
 function Test-IsAdministrator {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -95,11 +102,12 @@ function Install-Msi {
 }
 
 function Register-GvRemoteProtocol {
-    Write-Host "Registrando protocolo gvremote:// ..."
+    Write-Step "Registrando protocolo gvremote://"
     $commandValue = '\"C:\Program Files\Gv Remote\Gv Remote.exe\" \"%1\"'
     & reg add "HKCR\gvremote" /ve /d "URL:Gv Remote Protocol" /f | Out-Null
     & reg add "HKCR\gvremote" /v "URL Protocol" /d "" /f | Out-Null
     & reg add "HKCR\gvremote\shell\open\command" /ve /d $commandValue /f | Out-Null
+    Write-Host "Protocolo gvremote:// registrado."
 }
 
 function Install-GvRemoteInventoryScript {
@@ -183,7 +191,7 @@ function Invoke-GlpiInventoryNow {
         return
     }
 
-    Write-Host "Executando inventario GLPI..."
+    Write-Step "Executando inventario GLPI forçado"
     $args = "--tasks inventory --force --server `"$GlpiServerUrl`" --additional-content `"$AdditionalContentPath`" --logger=stderr --debug"
     $process = Start-Process -FilePath $agentBat -ArgumentList $args -Wait -PassThru
     if ($process.ExitCode -ne 0) {
@@ -194,24 +202,28 @@ function Invoke-GlpiInventoryNow {
 $tempDir = Join-Path $env:TEMP "gv-remote-install"
 New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 
+Write-Step "Localizando MSI mais recente do Gv Remote"
 $gvRemoteAsset = Get-LatestReleaseAsset -Repo $GvRemoteRepo -Pattern $GvRemoteAssetPattern
 $gvRemoteMsi = Save-ReleaseAsset -Asset $gvRemoteAsset -DestinationDirectory $tempDir
 
-Write-Host "Instalando Gv Remote..."
+Write-Step "Instalando Gv Remote"
 Install-Msi -Path $gvRemoteMsi -Arguments $GvRemoteInstallArgs
 Write-Host "Gv Remote instalado com sucesso."
 Register-GvRemoteProtocol
 
+Write-Step "Localizando MSI mais recente do GLPI Agent"
 $glpiAgentAsset = Get-LatestReleaseAsset -Repo $GlpiAgentRepo -Pattern $GlpiAgentAssetPattern
 $glpiAgentMsi = Save-ReleaseAsset -Asset $glpiAgentAsset -DestinationDirectory $tempDir
 
 $glpiArgs = "$GlpiAgentInstallArgs SERVER=`"$GlpiServerUrl`" TASKS=`"inventory`" ADD_FIREWALL_EXCEPTION=1 RUNNOW=0"
-Write-Host "Instalando GLPI Agent apontando para $GlpiServerUrl..."
+Write-Step "Instalando GLPI Agent apontando para $GlpiServerUrl"
 Install-Msi -Path $glpiAgentMsi -Arguments $glpiArgs
 Write-Host "GLPI Agent instalado com sucesso."
 
+Write-Step "Criando script de inventário do Gv Remote"
 Install-GvRemoteInventoryScript
+Write-Step "Configurando additional-content e server no agent.cfg"
 $additionalContent = Configure-GlpiAdditionalContent
 Invoke-GlpiInventoryNow -AdditionalContentPath $additionalContent
 
-Write-Host "Implantacao concluida."
+Write-Step "Implantação concluída"
