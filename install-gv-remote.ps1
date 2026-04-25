@@ -120,7 +120,33 @@ endlocal
     Write-Host "Script de inventario criado: $scriptPath"
 }
 
+function Configure-GlpiAdditionalContent {
+    $customDir = Join-Path $env:ProgramFiles "GLPI-Agent\etc\custom"
+    $cfgPath = Join-Path $env:ProgramFiles "GLPI-Agent\etc\agent.cfg"
+    $additionalContentPath = Join-Path $customDir "gvremote-additional-content.json"
+
+    New-Item -ItemType Directory -Path $customDir -Force | Out-Null
+    & (Join-Path $env:ProgramFiles "GLPI-Agent\scripts\gvremote-id.bat") |
+        Out-File -FilePath $additionalContentPath -Encoding ASCII -Force
+
+    $line = "additional-content = C:\Program Files\GLPI-Agent\etc\custom\gvremote-additional-content.json"
+    $cfgRaw = Get-Content -LiteralPath $cfgPath -Raw
+    if ($cfgRaw -match '(?m)^\s*additional-content\s*=') {
+        $cfgRaw = [regex]::Replace($cfgRaw, '(?m)^\s*additional-content\s*=.*$', $line)
+        Set-Content -LiteralPath $cfgPath -Value $cfgRaw -Encoding ASCII
+    } else {
+        Add-Content -LiteralPath $cfgPath -Value "`r`n$line"
+    }
+
+    Write-Host "GLPI additional-content configurado em: $additionalContentPath"
+    return $additionalContentPath
+}
+
 function Invoke-GlpiInventoryNow {
+    param(
+        [Parameter(Mandatory = $true)][string] $AdditionalContentPath
+    )
+
     $agentBat = Join-Path $env:ProgramFiles "GLPI-Agent\glpi-agent.bat"
     if (-not (Test-Path -LiteralPath $agentBat)) {
         Write-Warning "GLPI Agent instalado, mas glpi-agent.bat nao foi encontrado em: $agentBat"
@@ -128,7 +154,8 @@ function Invoke-GlpiInventoryNow {
     }
 
     Write-Host "Executando inventario GLPI..."
-    $process = Start-Process -FilePath $agentBat -ArgumentList "--tasks inventory --force" -Wait -PassThru
+    $args = "--tasks inventory --force --additional-content `"$AdditionalContentPath`""
+    $process = Start-Process -FilePath $agentBat -ArgumentList $args -Wait -PassThru
     if ($process.ExitCode -ne 0) {
         Write-Warning "Inventario GLPI retornou codigo $($process.ExitCode). Verifique o log do GLPI Agent."
     }
@@ -153,6 +180,7 @@ Install-Msi -Path $glpiAgentMsi -Arguments $glpiArgs
 Write-Host "GLPI Agent instalado com sucesso."
 
 Install-GvRemoteInventoryScript
-Invoke-GlpiInventoryNow
+$additionalContent = Configure-GlpiAdditionalContent
+Invoke-GlpiInventoryNow -AdditionalContentPath $additionalContent
 
 Write-Host "Implantacao concluida."
