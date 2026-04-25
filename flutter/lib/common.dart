@@ -3678,15 +3678,21 @@ Color? disabledTextColor(BuildContext context, bool enabled) {
       : Theme.of(context).textTheme.titleLarge?.color?.withOpacity(0.6);
 }
 
+/// Texto "Desenvolvido por…" — **não** usar na home desktop; só em ecrãs mobile que o invoquem explicitamente.
 Widget loadPowered(BuildContext context) {
+  return const SizedBox.shrink();
+}
+
+/// Rodapé de marca nas definições mobile (Android/iOS).
+Widget customClientPoweredFooter(BuildContext context) {
   if (bind.mainGetBuildinOption(key: "hide-powered-by-me") == 'Y') {
-    return SizedBox.shrink();
+    return const SizedBox.shrink();
   }
   return MouseRegion(
     cursor: SystemMouseCursors.click,
     child: GestureDetector(
       onTap: () {
-        launchUrl(Uri.parse('https://rustdesk.com'));
+        launchUrl(Uri.parse('https://www.grupovarnier.app.br'));
       },
       child: Opacity(
           opacity: 0.5,
@@ -3702,37 +3708,57 @@ Widget loadPowered(BuildContext context) {
   ).marginOnly(top: 6);
 }
 
-// max 300 x 60
+// Logo removido da UI; mantido para compatibilidade se algum fork ainda chamar.
 Widget loadLogo() {
-  return FutureBuilder<ByteData>(
-      future: rootBundle.load('assets/logo.png'),
-      builder: (BuildContext context, AsyncSnapshot<ByteData> snapshot) {
-        if (snapshot.hasData) {
-          final image = Image.asset(
-            'assets/logo.png',
-            fit: BoxFit.contain,
-            errorBuilder: (ctx, error, stackTrace) {
-              return Container();
-            },
-          );
-          return Container(
-            constraints: BoxConstraints(maxWidth: 300, maxHeight: 60),
-            child: image,
-          ).marginOnly(left: 12, right: 12, top: 12);
-        }
-        return const Offstage();
-      });
+  return const SizedBox.shrink();
 }
 
 Widget loadIcon(double size) {
-  return Image.asset('assets/icon.png',
-      width: size,
-      height: size,
-      errorBuilder: (ctx, error, stackTrace) => SvgPicture.asset(
+  // Windows: barra de tarefas/janela usam `.ico` via `window_manager.setIcon`; na UI usamos o mesmo ficheiro.
+  Widget raster() {
+    if (isWindows) {
+      return Image.asset(
+        'assets/window_icon.ico',
+        width: size,
+        height: size,
+        filterQuality: FilterQuality.high,
+        isAntiAlias: true,
+        errorBuilder: (ctx, err, st) => Image.asset(
+          'assets/icon.png',
+          width: size,
+          height: size,
+          filterQuality: FilterQuality.high,
+          isAntiAlias: true,
+          errorBuilder: (c2, e2, s2) => SvgPicture.asset(
             'assets/icon.svg',
             width: size,
             height: size,
-          ));
+          ),
+        ),
+      );
+    }
+    return Image.asset(
+      'assets/icon.png',
+      width: size,
+      height: size,
+      filterQuality: FilterQuality.high,
+      isAntiAlias: true,
+      errorBuilder: (ctx, error, stackTrace) => SvgPicture.asset(
+        'assets/icon.svg',
+        width: size,
+        height: size,
+      ),
+    );
+  }
+
+  return Container(
+    padding: const EdgeInsets.all(2),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(4),
+    ),
+    child: raster(),
+  );
 }
 
 var imcomingOnlyHomeSize = Size(280, 300);
@@ -3896,7 +3922,7 @@ get defaultOptionAccessMode => isCustomClient ? 'custom' : '';
 get defaultOptionApproveMode => isCustomClient ? 'password-click' : '';
 
 bool whitelistNotEmpty() {
-  // https://rustdesk.com/docs/en/self-host/client-configuration/advanced-settings/#whitelist
+  // https://www.grupovarnier.app.br/docs/en/self-host/client-configuration/advanced-settings/#whitelist
   final v = bind.mainGetOptionSync(key: kOptionWhitelist);
   return v != '' && v != ',';
 }

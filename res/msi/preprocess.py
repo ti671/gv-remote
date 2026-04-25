@@ -9,6 +9,7 @@ import datetime
 import subprocess
 import re
 import platform
+import locale
 from pathlib import Path
 from itertools import chain
 import shutil
@@ -27,15 +28,15 @@ g_arpsystemcomponent = {
     },
     "Contact": {
         "msi": "ARPCONTACT",
-        "v": "https://github.com/rustdesk/rustdesk",
+        "v": "https://www.grupovarnier.com.br",
     },
     "HelpLink": {
         "msi": "ARPHELPLINK",
-        "v": "https://github.com/rustdesk/rustdesk/issues/",
+        "v": "https://www.grupovarnier.com.br",
     },
     "ReadMe": {
         "msi": "ARPREADME",
-        "v": "https://github.com/rustdesk/rustdesk",
+        "v": "https://www.grupovarnier.com.br",
     },
 }
 
@@ -104,11 +105,11 @@ def read_lines_and_start_index(file_path, tag_start, tag_end):
 
     if index_start == -1:
         print(f'Error: start tag "{tag_start}" not found')
-        return None, None
+        return None, None, None
     if index_end == -1:
         print(f'Error: end tag "{tag_end}" not found')
-        return None, None
-    return lines, index_start
+        return None, None, None
+    return lines, index_start, index_end
 
 
 def insert_components_between_tags(lines, index_start, app_name, dist_dir):
@@ -429,9 +430,15 @@ def gen_conn_type(args):
 
 def gen_content_between_tags(filename, tag_start, tag_end, func):
     target_file = Path(sys.argv[0]).parent.joinpath(filename)
-    lines, index_start = read_lines_and_start_index(target_file, tag_start, tag_end)
+    lines, index_start, index_end = read_lines_and_start_index(
+        target_file, tag_start, tag_end
+    )
     if lines is None:
         return False
+
+    # Drop prior generated lines between tags so preprocess is idempotent.
+    if index_end > index_start + 1:
+        del lines[index_start + 1 : index_end]
 
     func(lines, index_start)
 
@@ -457,15 +464,22 @@ def prepare_resources():
 def init_global_vars(dist_dir, app_name, args):
     dist_app = dist_dir.joinpath(app_name + ".exe")
 
-    def read_process_output(args):
+    def read_process_output(flag):
+        # Avoid shell=True: paths with spaces (e.g. "C:\Users\GV TI\...") break cmd.exe.
         process = subprocess.Popen(
-            f"{dist_app} {args}",
+            [str(dist_app), flag],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            shell=True,
         )
         output, _ = process.communicate()
-        return output.decode("utf-8").strip()
+        if not output:
+            return ""
+        for enc in ("utf-8", "utf-8-sig", locale.getpreferredencoding(False) or "cp1252"):
+            try:
+                return output.decode(enc).strip()
+            except UnicodeDecodeError:
+                continue
+        return output.decode("utf-8", errors="replace").strip()
 
     global g_version
     global g_build_date

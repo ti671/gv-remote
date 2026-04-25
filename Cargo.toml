@@ -1,10 +1,10 @@
-[package]
+﻿[package]
 name = "rustdesk"
 version = "1.4.6"
-authors = ["rustdesk <info@rustdesk.com>"]
+authors = ["Walter Junior"]
 edition = "2021"
 build= "build.rs"
-description = "RustDesk Remote Desktop"
+description = "Gv Remote"
 default-run = "rustdesk"
 rust-version = "1.75"
 
@@ -213,10 +213,10 @@ exclude = ["vdi/host", "examples/custom_plugin"]
 libxdo-sys = { path = "libs/libxdo-sys-stub" }
 
 [package.metadata.winres]
-LegalCopyright = "Copyright © 2025 Purslane Ltd. All rights reserved."
-ProductName = "RustDesk"
-FileDescription = "RustDesk Remote Desktop"
-OriginalFilename = "rustdesk.exe"
+LegalCopyright = "Copyright (c) 2026 Walter Junior"
+ProductName = "Gv Remote"
+FileDescription = "Gv Remote"
+OriginalFilename = "Gv Remote.exe"
 
 [target.'cfg(target_os="windows")'.build-dependencies]
 winres = "0.1"
@@ -232,7 +232,7 @@ hound = "3.5"
 docopt = "1.1"
 
 [package.metadata.bundle]
-name = "RustDesk"
+name = "Gv Remote"
 identifier = "com.carriez.rustdesk"
 icon = ["res/32x32.png", "res/128x128.png", "res/128x128@2x.png"]
 osx_minimum_system_version = "10.14"
@@ -248,3 +248,4 @@ rpath = true
 
 [profile.dev]
 debug = 1
+

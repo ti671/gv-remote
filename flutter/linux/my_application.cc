@@ -1,4 +1,4 @@
-#include "my_application.h"
+﻿#include "my_application.h"
 
 #include "bump_mouse.h"
 
@@ -38,15 +38,6 @@ static void my_application_activate(GApplication* application) {
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
   gtk_window_set_decorated(window, FALSE);
-  // try setting icon for rustdesk, which uses the system cache
-  GtkIconTheme* theme = gtk_icon_theme_get_default();
-  gint icons[4] = {256, 128, 64, 32};
-  for (int i = 0; i < 4; i++) {
-    GdkPixbuf* icon = gtk_icon_theme_load_icon(theme, "rustdesk", icons[i], GTK_ICON_LOOKUP_NO_SVG, NULL);
-    if (icon != nullptr) {
-      gtk_window_set_icon(window, icon);
-    }
-  }
   // Use a header bar when running in GNOME as this is the common style used
   // by applications and is the setup most users will be using (e.g. Ubuntu
   // desktop).
@@ -68,11 +59,11 @@ static void my_application_activate(GApplication* application) {
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "rustdesk");
+    gtk_header_bar_set_title(header_bar, "Gv Remote");
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
   } else {
-    gtk_window_set_title(window, "rustdesk");
+    gtk_window_set_title(window, "Gv Remote");
   }
 
   // auto bdw = bitsdojo_window_from(window); // <--- add this line
@@ -88,6 +79,28 @@ static void my_application_activate(GApplication* application) {
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(project, self->dart_entrypoint_arguments);
+
+  // Window icon from Flutter bundle (replaces old GTK theme lookup "rustdesk").
+  const gchar* assets_dir = fl_dart_project_get_assets_path(project);
+  if (assets_dir != nullptr) {
+    g_autofree gchar* icon_png =
+        g_build_filename(assets_dir, "assets", "icon.png", nullptr);
+    if (g_file_test(icon_png, G_FILE_TEST_EXISTS)) {
+      GList* icon_list = nullptr;
+      gint sizes[] = {256, 128, 64, 32};
+      for (gsize i = 0; i < G_N_ELEMENTS(sizes); i++) {
+        GdkPixbuf* pb =
+            gdk_pixbuf_new_from_file_at_size(icon_png, sizes[i], sizes[i], nullptr);
+        if (pb != nullptr) {
+          icon_list = g_list_append(icon_list, pb);
+        }
+      }
+      if (icon_list != nullptr) {
+        gtk_window_set_icon_list(window, icon_list);
+        g_list_free_full(icon_list, (GDestroyNotify)g_object_unref);
+      }
+    }
+  }
 
   FlView* view = fl_view_new(project);
   gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(view));
@@ -260,3 +273,4 @@ void try_set_transparent(GtkWindow* window, GdkScreen* screen, FlView* view)
     }
   }
 }
+

@@ -49,6 +49,8 @@ fn initialize(app_dir: &str, custom_client_config: &str) {
         crate::load_custom_client();
     } else {
         crate::read_custom_client(custom_client_config);
+        crate::common::inject_builtin_network_defaults();
+        crate::common::inject_builtin_preset_password();
     }
     #[cfg(target_os = "android")]
     {

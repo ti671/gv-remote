@@ -32,6 +32,17 @@ import 'models/platform_model.dart';
 import 'package:flutter_hbb/plugin/handlers.dart'
     if (dart.library.html) 'package:flutter_hbb/web/plugin/handlers.dart';
 
+/// Windows frameless: ícone da barra/título vem de `WM_SETICON` via plugin; o `.ico` no `.rc` não basta.
+/// O ficheiro tem de existir em `data/flutter_assets/` (ver `window_manager.setIcon`).
+Future<void> trySetWindowsWindowIcon() async {
+  if (!isWindows) return;
+  try {
+    await windowManager.setIcon('assets/window_icon.ico');
+  } catch (e) {
+    debugPrint('trySetWindowsWindowIcon: $e');
+  }
+}
+
 /// Basic window and launch properties.
 int? kWindowId;
 WindowType? kWindowType;
@@ -172,6 +183,7 @@ void runMainApp(bool startService) async {
     }
     windowManager.setOpacity(1);
     windowManager.setTitle(getWindowName());
+    await trySetWindowsWindowIcon();
     // Do not use `windowManager.setResizable()` here.
     setResizable(!bind.isIncomingOnly());
   });
@@ -284,6 +296,12 @@ void runMultiWindow(
   }
   // show window from hidden status
   WindowController.fromWindowId(kWindowId!).show();
+  if (isWindows) {
+    unawaited((() async {
+      await Future<void>.delayed(Duration.zero);
+      await trySetWindowsWindowIcon();
+    })());
+  }
 }
 
 void runConnectionManagerScreen() async {
@@ -318,6 +336,7 @@ showCmWindow({bool isStartup = false}) async {
       windowManager.focus(),
       windowManager.setOpacity(1)
     ]);
+    await trySetWindowsWindowIcon();
     // ensure initial window size to be changed
     await windowManager.setSizeAlignment(
         kConnectionManagerWindowSizeClosedChat, Alignment.topRight);
@@ -399,6 +418,7 @@ void runInstallPage() async {
     windowManager.focus();
     windowManager.setOpacity(1);
     windowManager.setAlignment(Alignment.center); // ensure
+    await trySetWindowsWindowIcon();
   });
 }
 

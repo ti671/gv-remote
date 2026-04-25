@@ -13,6 +13,8 @@ src/version.rs
 *exe
 *tgz
 cert.pfx
+res/codesign/*.pfx
+res/codesign/*.cer
 *.bak
 *png
 *svg

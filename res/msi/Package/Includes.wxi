@@ -2,6 +2,18 @@
 <Include xmlns="http://wixtoolset.org/schemas/v4/wxs">
 
 	<!--$PreVarsStart$-->
+	<?define Version="1.4.6.64" ?>
+	<?define Manufacturer="Walter Junior" ?>
+	<?define Product="Gv Remote" ?>
+	<?define Description="Gv Remote Installer" ?>
+	<?define ProductLower="gv remote" ?>
+	<?define RegKeyRoot=".$(var.ProductLower)" ?>
+	<?define RegKeyInstall="$(var.RegKeyRoot)\Install" ?>
+	<?define BuildDir="C:\Users\GV TI\Documents\GitHub\rustdesk\rustdesk" ?>
+	<?define BuildDate="2026-04-24 19:41" ?>
+
+	<!-- The UpgradeCode must be consistent for each product. ! -->
+	<?define UpgradeCode = "8c8f2d74-9d40-504e-9237-b9335969032e" ?>
 	<!--$PreVarsEnd$-->
 
 </Include>

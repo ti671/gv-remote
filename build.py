@@ -9,6 +9,8 @@ import shutil
 import hashlib
 import argparse
 import sys
+import subprocess
+import glob
 from pathlib import Path
 
 windows = platform.platform().startswith('Windows')
@@ -420,6 +422,94 @@ def build_flutter_dmg(version, features):
     os.chdir("..")
 
 
+def find_signtool_exe():
+    """Return path to signtool.exe, or None."""
+    w = shutil.which("signtool")
+    if w:
+        return w
+    if not windows:
+        return None
+    roots = [
+        os.path.expandvars(r"%ProgramFiles(x86)%\Windows Kits\10\bin"),
+        os.path.expandvars(r"%ProgramFiles%\Windows Kits\10\bin"),
+    ]
+    candidates = []
+    for root in roots:
+        if not os.path.isdir(root):
+            continue
+        for signtool in glob.glob(os.path.join(root, "*", "x64", "signtool.exe")):
+            candidates.append(signtool)
+    if not candidates:
+        return None
+    candidates.sort(reverse=True)
+    return candidates[0]
+
+
+def windows_codesign_flutter_release(release_dir):
+    """
+    Authenticode-sign all .exe and .dll in the Flutter Windows Release output.
+
+    Set environment variables (any PFX path; password may contain special chars):
+      HBB_CODESIGN_PFX          Path to .pfx / .p12
+      HBB_CODESIGN_PFX_PASSWORD  PFX password (or legacy: P)
+    Optional:
+      HBB_CODESIGN_TIMESTAMP_URL  RFC3161 timestamp server (default DigiCert)
+    Skips quietly if PFX or password is not set.
+    """
+    if not windows:
+        return
+    pfx = os.environ.get("HBB_CODESIGN_PFX") or os.environ.get("CERT_PFX")
+    pw = os.environ.get("HBB_CODESIGN_PFX_PASSWORD") or os.environ.get("P")
+    if not pfx or not pw:
+        print(
+            "Windows code signing skipped (set HBB_CODESIGN_PFX and HBB_CODESIGN_PFX_PASSWORD, or CERT_PFX + P)."
+        )
+        return
+    pfx = os.path.abspath(os.path.expandvars(pfx))
+    if not os.path.isfile(pfx):
+        print(f"Windows code signing skipped: PFX not found: {pfx}")
+        return
+    signtool = find_signtool_exe()
+    if not signtool:
+        print("Windows code signing skipped: signtool.exe not found (install Windows SDK).")
+        return
+    ts = os.environ.get(
+        "HBB_CODESIGN_TIMESTAMP_URL", "http://timestamp.digicert.com"
+    )
+    root = Path(release_dir)
+    if not root.is_dir():
+        print(f"Windows code signing skipped: not a directory: {release_dir}")
+        return
+    files = sorted(set(root.glob("*.exe")) | set(root.glob("*.dll")))
+    if not files:
+        print(f"Windows code signing skipped: no PE files in {release_dir}")
+        return
+    print(f"Code signing {len(files)} file(s) with {signtool} …")
+    for f in files:
+        fp = f.resolve()
+        cmd = [
+            signtool,
+            "sign",
+            "/v",
+            "/fd",
+            "SHA256",
+            "/f",
+            str(pfx),
+            "/p",
+            pw,
+            "/tr",
+            ts,
+            "/td",
+            "SHA256",
+            str(fp),
+        ]
+        r = subprocess.run(cmd)
+        if r.returncode != 0:
+            sys.stderr.write(f"signtool failed for {f} (exit {r.returncode}).\n")
+            sys.exit(r.returncode)
+    print("Code signing finished.")
+
+
 def build_flutter_arch_manjaro(version, features):
     if not skip_cargo:
         system2(f'cargo build --features {features} --lib --release')
@@ -442,6 +532,7 @@ def build_flutter_windows(version, features, skip_portable_pack):
     os.chdir('..')
     shutil.copy2('target/release/deps/dylib_virtual_display.dll',
                  flutter_build_dir_2)
+    windows_codesign_flutter_release(flutter_build_dir_2)
     if skip_portable_pack:
         return
     os.chdir('libs/portable')

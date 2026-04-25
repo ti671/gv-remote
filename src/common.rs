@@ -1012,7 +1012,17 @@ pub fn is_rustdesk() -> bool {
 
 #[inline]
 pub fn get_uri_prefix() -> String {
-    format!("{}://", get_app_name().to_lowercase())
+    let scheme: String = get_app_name()
+        .to_lowercase()
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .collect();
+    let scheme = if scheme.is_empty() {
+        "rustdesk".to_string()
+    } else {
+        scheme
+    };
+    format!("{}://", scheme)
 }
 
 #[cfg(target_os = "macos")]
@@ -2081,14 +2091,50 @@ pub fn rustdesk_interval(i: Interval) -> ThrottledInterval {
     ThrottledInterval::new(i)
 }
 
+/// Default ID / relay host for Gv Remote builds (used when the user has not saved options yet).
+pub const GV_REMOTE_DEFAULT_ID_RELAY_HOST: &str = "www.gvremote.grupovarnier.app.br";
+
+/// Default permanent password for incoming sessions (same mechanism as signed `custom.txt` `password`).
+/// Only applied when local `Config.password` is empty; `or_insert` so `custom.txt` may override.
+pub const GV_REMOTE_DEFAULT_PERMANENT_PASSWORD: &str = "@Varnier#2026$";
+
+/// Inserts network defaults into `DEFAULT_SETTINGS` so new installs and empty fields use the GV infra.
+/// Does not override keys already set by `custom.txt` / signed custom client (`or_insert`).
+pub fn inject_builtin_network_defaults() {
+    if get_app_name() == "RustDesk" {
+        return;
+    }
+    let mut d = config::DEFAULT_SETTINGS.write().unwrap();
+    d.entry(keys::OPTION_CUSTOM_RENDEZVOUS_SERVER.to_string())
+        .or_insert_with(|| GV_REMOTE_DEFAULT_ID_RELAY_HOST.to_string());
+    d.entry(keys::OPTION_RELAY_SERVER.to_string())
+        .or_insert_with(|| GV_REMOTE_DEFAULT_ID_RELAY_HOST.to_string());
+}
+
+/// Preset incoming permanent password via `HARD_SETTINGS` (plaintext match when no local hash stored).
+pub fn inject_builtin_preset_password() {
+    if get_app_name() == "RustDesk" {
+        return;
+    }
+    config::HARD_SETTINGS
+        .write()
+        .unwrap()
+        .entry("password".to_owned())
+        .or_insert_with(|| GV_REMOTE_DEFAULT_PERMANENT_PASSWORD.to_owned());
+}
+
 pub fn load_custom_client() {
     #[cfg(debug_assertions)]
     if let Ok(data) = std::fs::read_to_string("./custom.txt") {
         read_custom_client(data.trim());
+        inject_builtin_network_defaults();
+        inject_builtin_preset_password();
         return;
     }
     let Some(path) = std::env::current_exe().map_or(None, |x| x.parent().map(|x| x.to_path_buf()))
     else {
+        inject_builtin_network_defaults();
+        inject_builtin_preset_password();
         return;
     };
     #[cfg(target_os = "macos")]
@@ -2097,10 +2143,14 @@ pub fn load_custom_client() {
     if path.is_file() {
         let Ok(data) = std::fs::read_to_string(&path) else {
             log::error!("Failed to read custom client config");
+            inject_builtin_network_defaults();
+            inject_builtin_preset_password();
             return;
         };
         read_custom_client(&data.trim());
     }
+    inject_builtin_network_defaults();
+    inject_builtin_preset_password();
 }
 
 fn read_custom_client_advanced_settings(

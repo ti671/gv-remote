@@ -288,7 +288,6 @@ class ConnectionManagerState extends State<ConnectionManager>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const _AppIcon(),
           Expanded(
             child: GestureDetector(
               onPanStart: (d) {
@@ -368,18 +367,6 @@ Widget buildConnectionCard(Client client) {
       ],
     ).paddingSymmetric(vertical: 4.0, horizontal: 8.0),
   );
-}
-
-class _AppIcon extends StatelessWidget {
-  const _AppIcon({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 4.0),
-      child: loadIcon(30),
-    );
-  }
 }
 
 class _CloseButton extends StatelessWidget {

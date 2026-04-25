@@ -81,15 +81,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     final isOutgoingOnly = bind.isOutgoingOnly();
     final children = <Widget>[
       if (!isOutgoingOnly) buildPresetPasswordWarning(),
-      if (bind.isCustomClient())
-        Align(
-          alignment: Alignment.center,
-          child: loadPowered(context),
-        ),
-      Align(
-        alignment: Alignment.center,
-        child: loadLogo(),
-      ),
       buildTip(context),
       if (!isOutgoingOnly) buildIDBoard(context),
       if (!isOutgoingOnly) buildPasswordBoard(context),
@@ -437,7 +428,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       final isToUpdate = (isWindows || isMacOS) && bind.mainIsInstalled();
       String btnText = isToUpdate ? 'Update' : 'Download';
       GestureTapCallback onPressed = () async {
-        final Uri url = Uri.parse('https://rustdesk.com/download');
+        final Uri url = Uri.parse('https://www.grupovarnier.app.br/download');
         await launchUrl(url);
       };
       if (isToUpdate) {
@@ -474,7 +465,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
             () async {
           await rustDeskWinManager.closeAllSubWindows();
           bind.mainUpdateMe();
-        });
+        },
+            installButtonWidth: 280);
       }
     } else if (isMacOS) {
       final isOutgoingOnly = bind.isOutgoingOnly();
@@ -530,7 +522,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
             marginTop: LinuxCards.isEmpty ? 20.0 : 5.0,
             help: 'Help',
             link:
-                'https://rustdesk.com/docs/en/client/linux/#permissions-issue',
+                'https://www.grupovarnier.app.br/docs/en/client/linux/#permissions-issue',
             closeButton: true,
             closeOption: keyShowSelinuxHelpTip,
           ));
@@ -541,13 +533,13 @@ class _DesktopHomePageState extends State<DesktopHomePage>
             "Warning", "wayland_experiment_tip", "", () async {},
             marginTop: LinuxCards.isEmpty ? 20.0 : 5.0,
             help: 'Help',
-            link: 'https://rustdesk.com/docs/en/client/linux/#x11-required'));
+            link: 'https://www.grupovarnier.app.br/docs/en/client/linux/#x11-required'));
       } else if (bind.mainIsLoginWayland()) {
         LinuxCards.add(buildInstallCard("Warning",
             "Login screen using Wayland is not supported", "", () async {},
             marginTop: LinuxCards.isEmpty ? 20.0 : 5.0,
             help: 'Help',
-            link: 'https://rustdesk.com/docs/en/client/linux/#login-screen'));
+            link: 'https://www.grupovarnier.app.br/docs/en/client/linux/#login-screen'));
       }
       if (LinuxCards.isNotEmpty) {
         return Column(
@@ -579,7 +571,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       String? help,
       String? link,
       bool? closeButton,
-      String? closeOption}) {
+      String? closeOption,
+      double installButtonWidth = 150}) {
     if (bind.mainGetBuildinOption(key: kOptionHideHelpCards) == 'Y' &&
         content != 'install_daemon_tip') {
       return const SizedBox();
@@ -647,7 +640,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     FixedWidthButton(
-                                      width: 150,
+                                      width: installButtonWidth,
                                       padding: 8,
                                       isOutline: true,
                                       text: translate(btnText),
