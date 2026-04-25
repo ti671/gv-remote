@@ -32,6 +32,16 @@ function Test-IsAdministrator {
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
+function Test-IsWindowsServer {
+    try {
+        $os = Get-CimInstance Win32_OperatingSystem -ErrorAction Stop
+        return ($os.ProductType -ne 1)
+    }
+    catch {
+        return $false
+    }
+}
+
 if (-not (Test-IsAdministrator)) {
     $elevatedArgs = @(
         "-NoProfile",
@@ -198,6 +208,10 @@ function Invoke-GlpiInventoryNow {
 
     Write-Step "Executando inventario GLPI forçado"
     $args = "--tasks inventory --force --server `"$GlpiServerUrl`" --additional-content `"$AdditionalContentPath`" --logger=stderr --debug"
+    if (Test-IsWindowsServer) {
+        Write-Host "Windows Server detectado: aplicando perfil de inventário otimizado."
+        $args += " --backend-collect-timeout=60 --no-category=database,vm,environment"
+    }
     $process = Start-Process -FilePath $agentBat -ArgumentList $args -Wait -PassThru
     if ($process.ExitCode -ne 0) {
         Write-Warning "Inventario GLPI retornou codigo $($process.ExitCode). Verifique o log do GLPI Agent."
