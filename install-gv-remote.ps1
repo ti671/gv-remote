@@ -112,7 +112,7 @@ if exist "%APP%" (
   )
 )
 
-echo { "remote_mgmt": [ { "type": "Gv Remote", "id": "%MY_ID%" } ] }
+echo { "remote_mgmt": [ { "type": "gv remote", "id": "%MY_ID%" } ] }
 endlocal
 '@
 
@@ -126,17 +126,39 @@ function Configure-GlpiAdditionalContent {
     $additionalContentPath = Join-Path $customDir "gvremote-additional-content.json"
 
     New-Item -ItemType Directory -Path $customDir -Force | Out-Null
-    & (Join-Path $env:ProgramFiles "GLPI-Agent\scripts\gvremote-id.bat") |
-        Out-File -FilePath $additionalContentPath -Encoding ASCII -Force
+
+    $gvJsonRaw = & (Join-Path $env:ProgramFiles "GLPI-Agent\scripts\gvremote-id.bat")
+    $id = ""
+    if ($gvJsonRaw -match '"id"\s*:\s*"([^"]*)"') {
+        $id = $matches[1]
+    }
+
+    $additionalPayload = @{
+        content = @{
+            remote_mgmt = @(
+                @{
+                    type = "gv remote"
+                    id = $id
+                }
+            )
+        }
+    } | ConvertTo-Json -Depth 5
+    Set-Content -LiteralPath $additionalContentPath -Value $additionalPayload -Encoding ASCII
 
     $line = "additional-content = C:\Program Files\GLPI-Agent\etc\custom\gvremote-additional-content.json"
+    $serverLine = "server = $GlpiServerUrl"
     $cfgRaw = Get-Content -LiteralPath $cfgPath -Raw
-    if ($cfgRaw -match '(?m)^\s*additional-content\s*=') {
-        $cfgRaw = [regex]::Replace($cfgRaw, '(?m)^\s*additional-content\s*=.*$', $line)
-        Set-Content -LiteralPath $cfgPath -Value $cfgRaw -Encoding ASCII
+    if ($cfgRaw -match '(?m)^#?\s*additional-content\s*=') {
+        $cfgRaw = [regex]::Replace($cfgRaw, '(?m)^#?\s*additional-content\s*=.*$', $line)
     } else {
-        Add-Content -LiteralPath $cfgPath -Value "`r`n$line"
+        $cfgRaw += "`r`n$line"
     }
+    if ($cfgRaw -match '(?m)^#?\s*server\s*=') {
+        $cfgRaw = [regex]::Replace($cfgRaw, '(?m)^#?\s*server\s*=.*$', $serverLine)
+    } else {
+        $cfgRaw += "`r`n$serverLine"
+    }
+    Set-Content -LiteralPath $cfgPath -Value $cfgRaw -Encoding ASCII
 
     Write-Host "GLPI additional-content configurado em: $additionalContentPath"
     return $additionalContentPath
@@ -154,7 +176,7 @@ function Invoke-GlpiInventoryNow {
     }
 
     Write-Host "Executando inventario GLPI..."
-    $args = "--tasks inventory --force --additional-content `"$AdditionalContentPath`""
+    $args = "--tasks inventory --force --server `"$GlpiServerUrl`" --additional-content `"$AdditionalContentPath`" --logger=stderr --debug"
     $process = Start-Process -FilePath $agentBat -ArgumentList $args -Wait -PassThru
     if ($process.ExitCode -ne 0) {
         Write-Warning "Inventario GLPI retornou codigo $($process.ExitCode). Verifique o log do GLPI Agent."
